@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "dgSpecHash": "Ne8YoHfVpxc=",
+  "success": true,
+  "projectFilePath": "/home/runner/work/Unofficial-GitHub-Driver/Unofficial-GitHub-Driver/src/GitHubDriver.Core/GitHubDriver.Core.csproj",
+  "expectedPackageFiles": [
+    "/home/runner/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/10.0.0-preview.2.25163.2/microsoft.extensions.dependencyinjection.abstractions.10.0.0-preview.2.25163.2.nupkg.sha512",
+    "/home/runner/.nuget/packages/microsoft.extensions.logging.abstractions/10.0.0-preview.2.25163.2/microsoft.extensions.logging.abstractions.10.0.0-preview.2.25163.2.nupkg.sha512",
+    "/home/runner/.nuget/packages/microsoft.extensions.options/10.0.0-preview.2.25163.2/microsoft.extensions.options.10.0.0-preview.2.25163.2.nupkg.sha512",
+    "/home/runner/.nuget/packages/microsoft.extensions.primitives/10.0.0-preview.2.25163.2/microsoft.extensions.primitives.10.0.0-preview.2.25163.2.nupkg.sha512",
+    "/home/runner/.nuget/packages/octokit/13.0.1/octokit.13.0.1.nupkg.sha512",
+    "/home/runner/.nuget/packages/system.net.http.json/10.0.0-preview.2.25163.2/system.net.http.json.10.0.0-preview.2.25163.2.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1510",
+      "level": "Warning",
+      "message": "PackageReference System.Net.Http.Json will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
+      "projectPath": "/home/runner/work/Unofficial-GitHub-Driver/Unofficial-GitHub-Driver/src/GitHubDriver.Core/GitHubDriver.Core.csproj",
+      "warningLevel": 1,
+      "filePath": "/home/runner/work/Unofficial-GitHub-Driver/Unofficial-GitHub-Driver/src/GitHubDriver.Core/GitHubDriver.Core.csproj",
+      "libraryId": "System.Net.Http.Json",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
+}
