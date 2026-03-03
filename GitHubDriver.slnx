@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GitHubDriver.CLI/GitHubDriver.CLI.csproj" />
+    <Project Path="src/GitHubDriver.Core/GitHubDriver.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GitHubDriver.Tests/GitHubDriver.Tests.csproj" />
+  </Folder>
+</Solution>
