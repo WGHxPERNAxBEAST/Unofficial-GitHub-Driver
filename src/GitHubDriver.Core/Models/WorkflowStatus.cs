@@ -32,6 +32,13 @@ public sealed class WorkflowStatus
     public IList<SubTask> SubTasks { get; set; } = [];
 
     /// <summary>
+    /// Gets or sets the current fix-iteration number (1-based). Zero means no fix iteration
+    /// has started yet. Each iteration represents one complete pass of: CI → fix (if needed) →
+    /// code review → fix (if needed).
+    /// </summary>
+    public int FixIteration { get; set; }
+
+    /// <summary>
     /// Gets or sets a human-readable summary of the current state, including any error messages.
     /// </summary>
     public string? Message { get; set; }
@@ -78,6 +85,18 @@ public enum WorkflowPhase
 
     /// <summary>Copilot is performing a code review of the pull request.</summary>
     ReviewingCode,
+
+    /// <summary>
+    /// CI tests failed; Copilot is analyzing the failure logs and generating fixes
+    /// to commit to the working branch before re-running tests.
+    /// </summary>
+    FixingTestFailures,
+
+    /// <summary>
+    /// The code review rejected the pull request; Copilot is addressing the review comments
+    /// and committing fixes to the working branch before re-running tests and re-reviewing.
+    /// </summary>
+    AddressingReviewFeedback,
 
     /// <summary>The pull request is being squash-merged into the target branch.</summary>
     MergingChanges,

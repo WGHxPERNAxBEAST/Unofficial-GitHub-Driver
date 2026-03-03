@@ -218,4 +218,106 @@ public sealed class GitHubService : IGitHubService
             .Create(owner, repo, pullRequestNumber, body)
             .ConfigureAwait(false);
     }
+
+    /// <inheritdoc/>
+    public async Task<string> GetCheckRunLogsAsync(
+        string owner,
+        string repo,
+        string branchName,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug(
+            "Fetching check-run logs for branch '{Branch}' in {Owner}/{Repo}", branchName, owner, repo);
+
+        var branch = await _client.Repository.Branch.Get(owner, repo, branchName).ConfigureAwait(false);
+        var headSha = branch.Commit.Sha;
+
+        var checkRuns = await _client.Check.Run
+            .GetAllForReference(owner, repo, headSha)
+            .ConfigureAwait(false);
+
+        var failedRuns = checkRuns.CheckRuns
+            .Where(r => r.Conclusion?.Value == CheckConclusion.Failure
+                     || r.Conclusion?.Value == CheckConclusion.ActionRequired)
+            .ToList();
+
+        if (failedRuns.Count == 0)
+            return string.Empty;
+
+        var sb = new System.Text.StringBuilder();
+        foreach (var run in failedRuns)
+        {
+            sb.AppendLine($"=== Check run: {run.Name} (conclusion: {run.Conclusion}) ===");
+
+            // The Checks API returns a log URL; we fetch it using the raw HttpClient
+            // included in the Octokit connection.
+            if (run.DetailsUrl is not null)
+                sb.AppendLine($"Details URL: {run.DetailsUrl}");
+
+            if (run.Output?.Summary is not null)
+                sb.AppendLine(run.Output.Summary);
+
+            if (run.Output?.Text is not null)
+                sb.AppendLine(run.Output.Text);
+
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    /// <inheritdoc/>
+    public async Task ApplyFileChangesAsync(
+        string owner,
+        string repo,
+        string branchName,
+        IReadOnlyList<FileChange> changes,
+        string commitMessage,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "Applying {Count} file change(s) to branch '{Branch}' in {Owner}/{Repo}",
+            changes.Count, branchName, owner, repo);
+
+        foreach (var change in changes)
+        {
+            var contentBytes = System.Text.Encoding.UTF8.GetBytes(change.Content);
+            var contentBase64 = Convert.ToBase64String(contentBytes);
+
+            // Try to get the existing file's SHA (needed by the update API).
+            string? existingSha = null;
+            try
+            {
+                var existing = await _client.Repository.Content
+                    .GetAllContentsByRef(owner, repo, change.Path, branchName)
+                    .ConfigureAwait(false);
+                existingSha = existing.FirstOrDefault()?.Sha;
+            }
+            catch (Octokit.NotFoundException)
+            {
+                // File doesn't exist yet — we'll create it.
+            }
+
+            if (existingSha is not null)
+            {
+                var updateRequest = new UpdateFileRequest(
+                    commitMessage, contentBase64, existingSha, branchName, true);
+                await _client.Repository.Content
+                    .UpdateFile(owner, repo, change.Path, updateRequest)
+                    .ConfigureAwait(false);
+
+                _logger.LogDebug("Updated file '{Path}' on '{Branch}'.", change.Path, branchName);
+            }
+            else
+            {
+                var createRequest = new CreateFileRequest(
+                    commitMessage, contentBase64, branchName, true);
+                await _client.Repository.Content
+                    .CreateFile(owner, repo, change.Path, createRequest)
+                    .ConfigureAwait(false);
+
+                _logger.LogDebug("Created file '{Path}' on '{Branch}'.", change.Path, branchName);
+            }
+        }
+    }
 }

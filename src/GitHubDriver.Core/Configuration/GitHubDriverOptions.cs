@@ -57,6 +57,14 @@ public sealed class GitHubDriverOptions
     public int MaxReviewRetries { get; set; } = 3;
 
     /// <summary>
+    /// Gets or sets the maximum number of complete fix iterations the orchestrator will
+    /// attempt before giving up. Each iteration covers one full pass of CI checks followed
+    /// by a code review; if either step finds issues Copilot generates fixes and the loop
+    /// repeats. Defaults to <c>5</c>.
+    /// </summary>
+    public int MaxFixIterations { get; set; } = 5;
+
+    /// <summary>
     /// Gets or sets the maximum number of seconds to wait for a CI run to complete after
     /// pushing to the working branch. Defaults to <c>600</c> (10 minutes).
     /// </summary>

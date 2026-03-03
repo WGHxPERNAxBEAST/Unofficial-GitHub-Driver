@@ -64,4 +64,40 @@ public interface ICopilotService
         string taskDescription,
         IReadOnlyList<SubTask> subTasks,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Analyzes CI test-failure logs and produces a <see cref="FixPlan"/> describing the
+    /// file changes required to make the tests pass.
+    /// </summary>
+    /// <param name="ciLogs">The raw CI / test-runner output containing failure details.</param>
+    /// <param name="taskDescription">The original task description used as context.</param>
+    /// <param name="diff">
+    /// The current pull-request diff so Copilot can see the code that is failing.
+    /// </param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>
+    /// A <see cref="FixPlan"/> containing a summary and the file changes to commit.
+    /// </returns>
+    Task<FixPlan> AnalyzeTestFailuresAsync(
+        string ciLogs,
+        string taskDescription,
+        string diff,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Generates a <see cref="FixPlan"/> that addresses all blocking issues raised by a
+    /// previous code review so that the pull request can be approved on the next pass.
+    /// </summary>
+    /// <param name="review">The <see cref="CodeReviewResult"/> containing the issues to fix.</param>
+    /// <param name="diff">The current pull-request diff that was reviewed.</param>
+    /// <param name="taskDescription">The original task description used as acceptance criteria.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>
+    /// A <see cref="FixPlan"/> containing a summary and the file changes to commit.
+    /// </returns>
+    Task<FixPlan> GenerateFixForReviewFeedbackAsync(
+        CodeReviewResult review,
+        string diff,
+        string taskDescription,
+        CancellationToken cancellationToken = default);
 }

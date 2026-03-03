@@ -127,6 +127,46 @@ public interface IGitHubService
         int pullRequestNumber,
         string body,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the combined log output from all failed check runs on the latest commit
+    /// of the specified branch.  Used by the fix loop to give Copilot context about why
+    /// tests are failing.
+    /// </summary>
+    /// <param name="owner">The repository owner.</param>
+    /// <param name="repo">The repository name.</param>
+    /// <param name="branchName">The branch whose check-run logs to retrieve.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>
+    /// A string containing the concatenated log output from all failed check runs, or an
+    /// empty string if no failed runs were found.
+    /// </returns>
+    Task<string> GetCheckRunLogsAsync(
+        string owner,
+        string repo,
+        string branchName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Commits one or more file create-or-update operations to the specified branch in a
+    /// single atomic commit.
+    /// </summary>
+    /// <param name="owner">The repository owner.</param>
+    /// <param name="repo">The repository name.</param>
+    /// <param name="branchName">The target branch to commit to.</param>
+    /// <param name="changes">
+    /// The list of files to create or overwrite.  Each entry supplies the repository-relative
+    /// path and the full UTF-8 content of the file.
+    /// </param>
+    /// <param name="commitMessage">The commit message for this batch of changes.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    Task ApplyFileChangesAsync(
+        string owner,
+        string repo,
+        string branchName,
+        IReadOnlyList<FileChange> changes,
+        string commitMessage,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

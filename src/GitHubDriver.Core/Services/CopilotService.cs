@@ -143,6 +143,69 @@ public sealed class CopilotService : ICopilotService
             .ConfigureAwait(false);
     }
 
+    /// <inheritdoc/>
+    public async Task<FixPlan> AnalyzeTestFailuresAsync(
+        string ciLogs,
+        string taskDescription,
+        string diff,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Analyzing test failures for task: {Task}", taskDescription);
+
+        var systemPrompt =
+            "You are an expert software engineer analyzing CI test failures. " +
+            "Given the failing test output and the current code diff, produce a JSON object " +
+            "with 'summary' (string describing what is being fixed) and 'fileChanges' (array of " +
+            "objects each with 'path' (string), 'content' (full corrected file content as string), " +
+            "and 'reason' (short string)). " +
+            "Return ONLY the JSON object, no surrounding prose.";
+
+        var userPrompt =
+            $"Original task: {taskDescription}\n\n" +
+            $"Current diff:\n```diff\n{diff}\n```\n\n" +
+            $"CI failure logs:\n```\n{ciLogs}\n```";
+
+        var content = await CallChatCompletionsAsync(systemPrompt, userPrompt, cancellationToken)
+            .ConfigureAwait(false);
+
+        return ParseFixPlan(content);
+    }
+
+    /// <inheritdoc/>
+    public async Task<FixPlan> GenerateFixForReviewFeedbackAsync(
+        CodeReviewResult review,
+        string diff,
+        string taskDescription,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Generating fixes for review feedback on task: {Task}", taskDescription);
+
+        var issueLines = review.Comments.Count > 0
+            ? string.Join("\n", review.Comments.Select(c => $"- [{c.Severity}] {c.FilePath}" +
+                (c.LineNumber.HasValue ? $":{c.LineNumber}" : string.Empty) + $": {c.Message}"))
+            : "(no specific comments – see summary)";
+
+        var systemPrompt =
+            "You are a senior software engineer addressing code review feedback. " +
+            "Given the review issues and the current code diff, produce a JSON object " +
+            "with 'summary' (string describing what is being fixed) and 'fileChanges' (array of " +
+            "objects each with 'path' (string), 'content' (full corrected file content as string), " +
+            "and 'reason' (short string explaining the fix)). " +
+            "Every Error-severity comment MUST be resolved. " +
+            "Return ONLY the JSON object, no surrounding prose.";
+
+        var userPrompt =
+            $"Original task: {taskDescription}\n\n" +
+            $"Current diff:\n```diff\n{diff}\n```\n\n" +
+            $"Review summary: {review.Summary}\n\n" +
+            $"Review issues:\n{issueLines}";
+
+        var content = await CallChatCompletionsAsync(systemPrompt, userPrompt, cancellationToken)
+            .ConfigureAwait(false);
+
+        return ParseFixPlan(content);
+    }
+
     // ── Private helpers ─────────────────────────────────────────────────────────
 
     /// <summary>
@@ -178,14 +241,41 @@ public sealed class CopilotService : ICopilotService
             await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
             cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        var content = doc
-            .RootElement
-            .GetProperty("choices")[0]
+        var choicesElement = doc.RootElement.GetProperty("choices");
+
+        if (choicesElement.GetArrayLength() == 0)
+            throw new InvalidOperationException("Copilot API returned a response with no choices.");
+
+        var content = choicesElement[0]
             .GetProperty("message")
             .GetProperty("content")
             .GetString();
 
         return content ?? throw new InvalidOperationException("Copilot API returned an empty response.");
+    }
+
+    /// <summary>
+    /// Parses a <see cref="FixPlan"/> from a JSON Copilot response.
+    /// </summary>
+    private static FixPlan ParseFixPlan(string json)
+    {
+        json = StripCodeFences(json);
+
+        var dto = JsonSerializer.Deserialize<FixPlanDto>(json, JsonOptions)
+            ?? throw new InvalidOperationException("Failed to parse fix plan from Copilot response.");
+
+        return new FixPlan
+        {
+            Summary = dto.Summary ?? "No summary provided.",
+            FileChanges = (dto.FileChanges ?? [])
+                .Select(f => new FileChange
+                {
+                    Path    = f.Path    ?? "unknown",
+                    Content = f.Content ?? string.Empty,
+                    Reason  = f.Reason
+                })
+                .ToList()
+        };
     }
 
     /// <summary>
@@ -277,4 +367,13 @@ public sealed class CopilotService : ICopilotService
         [property: JsonPropertyName("lineNumber")] int? LineNumber,
         [property: JsonPropertyName("severity")]   string? Severity,
         [property: JsonPropertyName("message")]    string? Message);
+
+    private sealed record FixPlanDto(
+        [property: JsonPropertyName("summary")]     string? Summary,
+        [property: JsonPropertyName("fileChanges")] List<FileChangeDto>? FileChanges);
+
+    private sealed record FileChangeDto(
+        [property: JsonPropertyName("path")]    string? Path,
+        [property: JsonPropertyName("content")] string? Content,
+        [property: JsonPropertyName("reason")]  string? Reason);
 }
